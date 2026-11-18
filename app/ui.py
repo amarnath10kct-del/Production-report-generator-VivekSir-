@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 from app.access import client_ip, is_allowed
 from app.config import ConfigError, Settings, load_dotenv_if_present
@@ -25,6 +26,8 @@ log = logging.getLogger("app.ui")
 
 APP_TITLE = "MDK Weekly Planning Generator"
 STATIC = Path(__file__).resolve().parent.parent / "static"
+LOGO = STATIC / "logo.png"
+FAVICON = STATIC / "favicon.png"
 GENERIC_ERROR = "Something went wrong while generating the workbook. Please try again."
 
 
@@ -69,22 +72,94 @@ def request_context() -> tuple[dict[str, str], str | None]:
     return headers, ip if isinstance(ip, str) else None
 
 
+def _dark_theme() -> bool:
+    try:
+        return st.context.theme.type == "dark"
+    except Exception:  # pragma: no cover - outside a browser session
+        return False
+
+
 def _css() -> None:
     css = (STATIC / "style.css").read_text(encoding="utf-8")
+    if _dark_theme():
+        css += (STATIC / "dark.css").read_text(encoding="utf-8")
     st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
 
 
-def _steps(current: int) -> None:
+def _steps(slot: Any, current: int) -> None:
     labels = ["Upload master", "Generate", "Download"]
     items = []
     for i, label in enumerate(labels, start=1):
         state = "done" if i < current else ("active" if i == current else "todo")
         aria = ' aria-current="step"' if i == current else ""
         items.append(f'<li class="step {state}"{aria}><span class="num">{i}</span>{label}</li>')
-    st.markdown(
+    slot.markdown(
         '<nav aria-label="Progress"><ol class="steps">' + "".join(items) + "</ol></nav>",
         unsafe_allow_html=True,
     )
+
+
+# Live clock in the viewer's own time zone; runs in the browser, so it costs no server reruns.
+_CLOCK_HTML = """
+<div id="clock" style="font-family: sans-serif; text-align: center; color: __COLOR__;">
+  <div id="time" style="font-size: 1.6rem; font-weight: 700; letter-spacing: 0.04em;"></div>
+  <div id="date" style="font-size: 0.85rem; opacity: 0.75;"></div>
+</div>
+<script>
+  function tick() {
+    const now = new Date();
+    document.getElementById("time").textContent =
+      now.toLocaleTimeString(undefined, {hour: "2-digit", minute: "2-digit", second: "2-digit"});
+    document.getElementById("date").textContent =
+      now.toLocaleDateString(undefined, {weekday: "long", day: "numeric", month: "long", year: "numeric"});
+  }
+  tick();
+  setInterval(tick, 1000);
+</script>
+"""
+
+# Shown while generate() runs. The stages light up on a timer that roughly follows the pipeline.
+_WORKING_HTML = """
+<div class="working" role="status" aria-live="polite">
+  <div class="working-head"><span class="gear" aria-hidden="true">&#9881;</span>
+    Generating the planning workbook&hellip; this can take up to a minute.</div>
+  <div class="bar"><span></span></div>
+  <ol class="stages">
+    <li style="animation-delay: 0s">Checking the master file</li>
+    <li style="animation-delay: 1.5s">Building Monday&ndash;Saturday tabs</li>
+    <li style="animation-delay: 3.5s">Calculating formulas</li>
+    <li style="animation-delay: 10s">Verifying the workbook</li>
+  </ol>
+</div>
+"""
+
+
+def _sidebar(settings: Settings) -> None:
+    with st.sidebar:
+        st.image(str(LOGO), width="stretch", alt="JAY logo")
+        st.markdown(f'<p class="side-title">{APP_TITLE}</p>', unsafe_allow_html=True)
+        components.html(
+            _CLOCK_HTML.replace("__COLOR__", "#fafafa" if _dark_theme() else "#1f3864"), height=64
+        )
+        st.divider()
+        st.markdown(
+            "**About**\n\n"
+            "Turns the weekly MDK production master into a day-wise planning workbook: "
+            "Monday–Saturday planning tabs plus a Consolidated sheet, with formulas, dropdowns "
+            "and highlighting built in (no macros)."
+        )
+        st.markdown(
+            "**How to use**\n\n"
+            "1. Upload the weekly master (.xlsx)\n"
+            "2. Click **Generate planning workbook**\n"
+            "3. Download `<master>_Planning.xlsx`"
+        )
+        st.markdown(
+            "**Good to know**\n\n"
+            f"- Excel .xlsx only, up to {settings.max_upload_mb} MB\n"
+            "- Files are processed in memory and never stored\n"
+            "- The master sheet is copied into the output unchanged"
+        )
 
 
 def _clear_result() -> None:
@@ -133,9 +208,10 @@ def _run_generation(upload: Any, settings: Settings, ip: str) -> None:
         )
         return
     data: bytes = upload.getvalue()
+    working = st.empty()
+    working.markdown(_WORKING_HTML, unsafe_allow_html=True)
     try:
-        with st.spinner("Generating the planning workbook... this can take up to a minute."):
-            res = generate(data, upload.name, settings.generate_options())
+        res = generate(data, upload.name, settings.generate_options())
     except PlannerError as exc:
         log.info(
             "generate.rejected",
@@ -155,6 +231,9 @@ def _run_generation(upload: Any, settings: Settings, ip: str) -> None:
         )
         st.session_state["error"] = (GENERIC_ERROR, rid)
         return
+    finally:
+        working.empty()
+    st.toast("Planning workbook ready", icon=":material/check_circle:")
     t = res.summary.timings_ms
     log.info(
         "generate.ok",
@@ -178,7 +257,9 @@ def _run_generation(upload: Any, settings: Settings, ip: str) -> None:
 
 def main() -> None:
     """Render the page."""
-    st.set_page_config(page_title=APP_TITLE, page_icon=":material/calendar_month:", layout="centered")
+    st.set_page_config(
+        page_title=APP_TITLE, page_icon=str(FAVICON), layout="centered", initial_sidebar_state="auto"
+    )
     _css()
     try:
         settings = get_settings()
@@ -195,7 +276,11 @@ def main() -> None:
         st.stop()
         return
 
-    st.title(APP_TITLE)
+    _sidebar(settings)
+    logo_col, title_col = st.columns([1, 5], vertical_alignment="center", wrap=False)
+    logo_col.image(str(LOGO), width="stretch", alt="JAY logo")
+    with title_col:
+        st.title(APP_TITLE)
     st.write("Upload the weekly production master (.xlsx) and download the day-wise planning workbook.")
     result: GenerateResult | None = st.session_state.get("result")
     upload = st.file_uploader(
@@ -206,7 +291,8 @@ def main() -> None:
         on_change=_clear_result,
         key="master",
     )
-    _steps(3 if result else (2 if upload else 1))
+    steps = st.empty()  # filled after a possible generation so it shows the step reached
+    _steps(steps, 3 if result else (2 if upload else 1))
 
     clicked = st.button(
         "Generate planning workbook",
@@ -220,13 +306,15 @@ def main() -> None:
         _clear_result()
         _run_generation(upload, settings, ip)
         result = st.session_state.get("result")
+        _steps(steps, 3 if result else 2)
 
     err = st.session_state.get("error")
     if err:
         message, rid = err
         st.error(f"{message}\n\nReference: {rid}", icon=":material/error:")
     if result is not None:
-        _result_panel(result)
+        with st.container(key="result"):
+            _result_panel(result)
 
     # Hidden by default; set SHOW_SERVER_STATUS=true to show it for troubleshooting.
     if settings.show_server_status:

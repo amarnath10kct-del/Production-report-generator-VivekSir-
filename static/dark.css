@@ -1,0 +1,5 @@
+/* Added on top of style.css when Streamlit's theme is dark (not the OS setting: the app theme can differ). */
+.steps .step.active { border-color: #8fa9dc; }
+.steps .step.active .num,
+.steps .step.done .num { background: #8fa9dc; color: #0e1117; }
+.working .bar span { background: linear-gradient(90deg, #8fa9dc, #f5c400); }
