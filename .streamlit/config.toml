@@ -1,0 +1,26 @@
+[server]
+# MB; keep in line with MAX_UPLOAD_MB (the app also checks it)
+maxUploadSize = 10
+maxMessageSize = 50
+enableXsrfProtection = true
+headless = true
+runOnSave = false
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false
+
+[client]
+# never show tracebacks to users
+showErrorDetails = "none"
+toolbarMode = "minimal"
+
+[global]
+developmentMode = false
+
+[logger]
+level = "warning"
+
+[theme]
+primaryColor = "#1F3864"
+font = "sans serif"

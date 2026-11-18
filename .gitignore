@@ -1,0 +1,45 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Tool caches and test output
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Secrets and local config
+.env
+.env.*
+.env.example
+.streamlit/secrets.toml
+
+# Kept local only: tests and Claude Code notes
+tests/
+CLAUDE.md
+
+# Logs
+logs/
+*.log
+
+# Editor / OS / personal tool settings
+.vscode/
+.idea/
+.claude/settings.local.json
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Real production masters and outputs are business data: never commit them.
+# (also covers Excel lock files like ~$Book.xlsx)
+*.xlsx
+*.xlsm
+*.xls
+*.csv

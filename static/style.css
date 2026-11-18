@@ -1,0 +1,49 @@
+/* Local styles only: no web fonts, no CDNs. */
+.steps {
+  list-style: none;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0;
+  margin: 0.25rem 0 1rem;
+  flex-wrap: wrap;
+}
+.steps .step {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(128, 128, 128, 0.35);
+  font-size: 0.9rem;
+  color: inherit;
+  opacity: 0.7;
+}
+.steps .step .num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: rgba(128, 128, 128, 0.25);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+.steps .step.active {
+  opacity: 1;
+  border-color: #1f3864;
+  font-weight: 600;
+}
+.steps .step.active .num,
+.steps .step.done .num {
+  background: #1f3864;
+  color: #fff;
+}
+.steps .step.done {
+  opacity: 0.9;
+}
+@media (prefers-color-scheme: dark) {
+  .steps .step.active { border-color: #8fa9dc; }
+  .steps .step.active .num,
+  .steps .step.done .num { background: #8fa9dc; color: #0e1117; }
+}

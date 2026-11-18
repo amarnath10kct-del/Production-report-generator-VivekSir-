@@ -1,0 +1,46 @@
+[project]
+name = "mdk-weekly-planning"
+version = "1.0.0"
+description = "Generates the MDK day-wise planning workbook from the weekly production master."
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = ["planning_template_reference.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "S", "SIM", "RUF", "D"]
+ignore = [
+  "D203", "D213", "D105", "D107",
+  "UP031",   # the approved builder uses %-formatting; kept verbatim
+  "UP032",   # ... and str.format
+  "E501",    # long formula strings in the builder are kept verbatim
+  "RUF001", "RUF002", "RUF003",
+  "N818",    # exception names read better without an Error suffix
+]
+
+[tool.ruff.lint.per-file-ignores]
+"planner/builder.py" = ["RUF005", "RUF034"]  # kept verbatim from the approved reference
+"tests/**" = ["S310", "S101", "S603", "S607", "D", "N", "S108", "S311"]
+"streamlit_app.py" = ["D"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["planner", "app", "streamlit_app.py"]
+
+[[tool.mypy.overrides]]
+module = ["openpyxl", "openpyxl.*", "defusedxml", "defusedxml.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+timeout = 300
+markers = [
+  "libreoffice: needs LibreOffice installed",
+  "samples: needs the real weekly masters in the project folder",
+  "e2e: starts the Streamlit server",
+]
+filterwarnings = ["ignore::UserWarning:openpyxl"]
