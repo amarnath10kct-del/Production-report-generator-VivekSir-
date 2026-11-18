@@ -25,6 +25,7 @@ from planner.service import XLSX_MIME, GenerateResult, generate
 log = logging.getLogger("app.ui")
 
 APP_TITLE = "MDK Weekly Planning Generator"
+APP_VERSION = "Version 01"
 STATIC = Path(__file__).resolve().parent.parent / "static"
 LOGO = STATIC / "logo.png"
 FAVICON = STATIC / "favicon.png"
@@ -161,6 +162,8 @@ def _sidebar(settings: Settings) -> None:
             "- Files are processed in memory and never stored\n"
             "- The master sheet is copied into the output unchanged"
         )
+        st.divider()
+        st.caption(APP_VERSION)
 
 
 def _clear_result() -> None:
