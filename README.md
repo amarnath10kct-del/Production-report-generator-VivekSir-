@@ -84,6 +84,7 @@ Invalid values stop the app with a message naming the setting.
 | `LOG_FILE` | *(empty)* | Also write logs to this file, rotated. Empty = stdout only. |
 | `LOG_MAX_BYTES` | `5242880` | Rotate the log file at this size. |
 | `LOG_BACKUPS` | `5` | Rotated log files kept. |
+| `SHOW_SERVER_STATUS` | `false` | Show the "Server status" panel (LibreOffice readiness, limits) at the bottom of the page. |
 
 ## Development
 ```powershell

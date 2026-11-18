@@ -43,6 +43,7 @@ class Settings:
     log_file: str = ""
     log_max_bytes: int = 5 * _MB
     log_backups: int = 5
+    show_server_status: bool = False
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
@@ -94,6 +95,7 @@ class Settings:
             log_file=e.get("LOG_FILE", "").strip(),
             log_max_bytes=integer("LOG_MAX_BYTES", 5 * _MB, 10_000, 1_000 * _MB),
             log_backups=integer("LOG_BACKUPS", 5, 0, 100),
+            show_server_status=boolean("SHOW_SERVER_STATUS", False),
         )
 
     def generate_options(self) -> GenerateOptions:

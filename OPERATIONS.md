@@ -1,7 +1,8 @@
 # Operations runbook
 
 ## Is it up?
-- Open the app. The **Server status** panel at the bottom says whether LibreOffice is ready.
+- Set `SHOW_SERVER_STATUS = "true"` (Secrets / `.env`) and open the app. The **Server status** panel at
+  the bottom says whether LibreOffice is ready. It is hidden by default; turn it off again afterwards.
 - Liveness: `GET <app-url>/_stcore/health` returns `ok`.
 - Streamlit Cloud: **Manage app** (bottom-right of the app) shows status, logs and a **Reboot** button.
 

@@ -228,10 +228,12 @@ def main() -> None:
     if result is not None:
         _result_panel(result)
 
-    ready, text = readiness(settings.soffice_path, settings.recalc_enabled)
-    with st.expander("Server status"):
-        st.write(("✅ " if ready else "⚠️ ") + text)
-        st.caption(
-            f"Limits: {settings.max_upload_mb} MB per file, {settings.max_rows:,} rows, "
-            f"{settings.rate_limit_per_hour or 'unlimited'} generations per hour."
-        )
+    # Hidden by default; set SHOW_SERVER_STATUS=true to show it for troubleshooting.
+    if settings.show_server_status:
+        ready, text = readiness(settings.soffice_path, settings.recalc_enabled)
+        with st.expander("Server status"):
+            st.write(("✅ " if ready else "⚠️ ") + text)
+            st.caption(
+                f"Limits: {settings.max_upload_mb} MB per file, {settings.max_rows:,} rows, "
+                f"{settings.rate_limit_per_hour or 'unlimited'} generations per hour."
+            )
