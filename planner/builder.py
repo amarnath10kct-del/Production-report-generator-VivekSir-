@@ -10,8 +10,10 @@ widths, filters and freeze panes are identical. The only deliberate differences:
    the master is still copied as a formula, exactly as the reference does.
 2. It works on in-memory file objects and returns a typed :class:`BuildInfo`.
 3. Header detection tolerates case and extra whitespace (see :mod:`planner.headers`).
+4. It adds a "Week Entries" sheet (after Consolidated) that lists every day-tab row with an Item
+   and a Day Plan Qty, Monday to Saturday, using formulas only (see :func:`_week_entries`).
 
-Golden tests (``tests/test_golden.py``) prove the output equals the reference generator's.
+Golden tests (``tests/test_golden.py``) prove every other sheet equals the reference generator's.
 """
 
 from __future__ import annotations
@@ -26,13 +28,15 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter as L  # noqa: N812 - name kept from the reference
 from openpyxl.workbook.properties import CalcProperties
 from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.worksheet.formula import ArrayFormula
 
 from planner.errors import MasterFormatError
 from planner.headers import HEADER_SEARCH_ROWS, find_header_row
 
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+ENTRIES = "Week Entries"
 #: Sheet names (case-insensitive) that the builder deletes and recreates.
-RESERVED_SHEETS = [d.lower() for d in DAYS] + ["consolidated", "_lists"]
+RESERVED_SHEETS = [d.lower() for d in DAYS] + ["consolidated", ENTRIES.lower(), "_lists"]
 FONT = "Arial"
 HDR_FILL = PatternFill("solid", fgColor="1F3864")
 INPUT_FILL = PatternFill("solid", fgColor="FFF2CC")
@@ -78,6 +82,83 @@ def _put(ws: Any, row: int, col: int, value: Any) -> Any:
     if isinstance(value, str) and cell.data_type == "f":
         cell.data_type = "s"
     return cell
+
+
+def _week_entries(wb: Any, title: Any, hdr: int, first: int, lastd: int, nrows: int) -> None:
+    """Add the "Week Entries" sheet: every day-tab row with an Item and a Day Plan Qty.
+
+    Formulas only, no Excel-365 functions, so it works in any Excel and in LibreOffice and
+    updates as the planner types. Hidden helpers on the same sheet:
+
+    * ``J:L`` rows ``hdr+1..hdr+6``: day name, entries that day, entries on earlier days.
+    * ``F`` per output row k: which day the k-th entry is on (blank past the last entry).
+    * ``G`` per output row k: the day-tab row it comes from (array formula, SMALL(IF(...))).
+    """
+    ws = wb.create_sheet(ENTRIES)
+    ws["A1"] = "%s  |  %s" % (ENTRIES, title)
+    ws["A1"].font = Font(name=FONT, bold=True, size=13)
+    ws["A2"] = (
+        "Lists every row with an Item and a Day Plan Qty from the Monday to Saturday sheets, "
+        "day by day. It updates automatically; do not type here."
+    )
+    ws["A2"].font = Font(name=FONT, italic=True, size=9, color="595959")
+    ws.merge_cells("A2:D2")
+    ws["A2"].alignment = Alignment(wrap_text=True, vertical="top")
+    ws.row_dimensions[2].height = 26
+    for c, h in enumerate(["Day", "Work centre", "Item", "Day Plan Qty"], start=1):
+        cell = ws.cell(hdr, c, h)
+        cell.font = Font(name=FONT, bold=True, color="FFFFFF")
+        cell.fill = HDR_FILL
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = BORDER
+    ws.row_dimensions[hdr].height = 30
+
+    # per-day counts (J day, K entries that day, L entries on earlier days)
+    s, e = hdr + 1, hdr + len(DAYS)
+    for i, day in enumerate(DAYS):
+        r = s + i
+        ws.cell(r, 10, day)
+        ws.cell(
+            r,
+            11,
+            '=SUMPRODUCT((%s!$B$%d:$B$%d<>"")*(%s!$E$%d:$E$%d<>""))' % (day, first, lastd, day, first, lastd),
+        )
+        ws.cell(r, 12, 0 if i == 0 else "=L%d+K%d" % (r - 1, r - 1))
+    days_j = "$J$%d:$J$%d" % (s, e)
+    starts = "$L$%d:$L$%d" % (s, e)
+
+    def pick(col: str, top: int) -> str:
+        return "CHOOSE($F{r},%s)" % ",".join("%s!$%s$%d:$%s$%d" % (d, col, top, col, lastd) for d in DAYS)
+
+    is_entry = '(%s<>"")*(%s<>"")' % (pick("B", first), pick("E", first))
+    lastw = hdr + len(DAYS) * nrows
+    for k in range(1, len(DAYS) * nrows + 1):
+        r = hdr + k
+        ws.cell(r, 6, '=IF(%d>SUM($K$%d:$K$%d),"",COUNTIF(%s,"<="&%d))' % (k, s, e, starts, k - 1))
+        src = 'IF($F{r}="","",SMALL(IF(%s,ROW(Monday!$B$%d:$B$%d)),%d-INDEX(%s,$F{r})))' % (
+            is_entry,
+            first,
+            lastd,
+            k,
+            starts,
+        )
+        ws.cell(r, 7).value = ArrayFormula("G%d" % r, "=" + src.format(r=r))
+        ws.cell(r, 1, '=IF($F{r}="","",INDEX({j},$F{r}))'.format(r=r, j=days_j))
+        for c, col in ((2, "A"), (3, "B"), (4, "E")):
+            ws.cell(r, c, '=IF($F{r}="","",INDEX(%s,$G{r}))'.format(r=r) % pick(col, 1).format(r=r))
+        for c in range(1, 5):
+            cell = ws.cell(r, c)
+            cell.font = Font(name=FONT, size=10)
+            cell.border = BORDER
+        ws.cell(r, 3).alignment = Alignment(wrap_text=True, vertical="center")
+        ws.cell(r, 4).number_format = "#,##0"
+
+    for col, w in zip("ABCD", (12, 24, 58, 14), strict=True):
+        ws.column_dimensions[col].width = w
+    for col in "FGHIJKL":
+        ws.column_dimensions[col].hidden = True
+    ws.freeze_panes = ws.cell(hdr + 1, 1)
+    ws.auto_filter.ref = "A%d:D%d" % (hdr, lastw)
 
 
 def read_master(wb: Any) -> tuple[Any, int, int, list[MasterRow]]:
@@ -338,8 +419,10 @@ def build(src: IO[bytes] | str, dst: IO[bytes] | str) -> BuildInfo:
     cons.freeze_panes = cons.cell(hdr + 1, 1)
     cons.auto_filter.ref = "A%d:K%d" % (hdr, last)
 
-    # order: master, days, consolidated, _Lists (hidden)
-    order = [mname] + DAYS + ["Consolidated", "_Lists"]
+    _week_entries(wb, title, hdr, first, lastd, nrows)
+
+    # order: master, days, consolidated, week entries, _Lists (hidden)
+    order = [mname] + DAYS + ["Consolidated", ENTRIES, "_Lists"]
     wb._sheets = [wb[n] for n in order]
     wb.calculation = CalcProperties(fullCalcOnLoad=True)
     wb.save(dst)

@@ -145,8 +145,9 @@ def _sidebar(settings: Settings) -> None:
         st.markdown(
             "**About**\n\n"
             "Turns the weekly MDK production master into a day-wise planning workbook: "
-            "Monday–Saturday planning tabs plus a Consolidated sheet, with formulas, dropdowns "
-            "and highlighting built in (no macros)."
+            "Monday–Saturday planning tabs, a Consolidated sheet and a Week Entries sheet that "
+            "lists every day's entries in one place, with formulas, dropdowns and highlighting "
+            "built in (no macros)."
         )
         st.markdown(
             "**How to use**\n\n"

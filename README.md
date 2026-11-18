@@ -2,9 +2,11 @@
 
 Upload the weekly production master (.xlsx), get back the day-wise planning workbook
 (`<master name>_Planning.xlsx`): the master sheet unchanged, **Monday–Saturday** planning tabs,
-**Consolidated**, and a hidden **_Lists** sheet. All planning logic lives in the downloaded file as
-formulas, dropdowns and conditional formatting (no macros). The layout is the client-approved
-template in `planning_template_reference.py`; `planner/builder.py` is a faithful port of it.
+**Consolidated**, **Week Entries** (every row with an Item and a Day Plan Qty from Monday–Saturday,
+listed day by day and updated live), and a hidden **_Lists** sheet. All planning logic lives in the
+downloaded file as formulas, dropdowns and conditional formatting (no macros). The layout is the
+client-approved template in `planning_template_reference.py`; `planner/builder.py` is a faithful port
+of it, plus the Week Entries sheet.
 
 Nothing uploaded is stored: the file is processed in memory, LibreOffice temp files are deleted
 when each generation finishes, and the result lives only in the browser session until the next upload.

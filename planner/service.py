@@ -94,7 +94,7 @@ def generate(data: bytes, filename: str, opts: GenerateOptions | None = None) ->
 
     summary = Summary.from_report(report)
     expected = Expected(
-        sheet_order=[info.master_title, *builder.DAYS, "Consolidated", "_Lists"],
+        sheet_order=[info.master_title, *builder.DAYS, "Consolidated", builder.ENTRIES, "_Lists"],
         first=info.first,
         lastd=info.lastd,
         hdr=info.hdr,

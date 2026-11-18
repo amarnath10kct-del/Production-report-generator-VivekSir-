@@ -145,7 +145,7 @@ def verify_output(formulas_wb: Any, values_wb: Any, exp: Expected) -> list[str]:
         A list of problems (empty when the workbook is good). Problems never contain cell data.
 
     """
-    from planner.builder import DAYS  # local import keeps module import order simple
+    from planner.builder import DAYS, ENTRIES  # local import keeps module import order simple
 
     problems: list[str] = []
     if formulas_wb.sheetnames != exp.sheet_order:
@@ -173,6 +173,11 @@ def verify_output(formulas_wb: Any, values_wb: Any, exp: Expected) -> list[str]:
         problems.append("Consolidated: freeze panes lost")
     if cons.auto_filter.ref != f"A{exp.hdr}:K{exp.last}":
         problems.append("Consolidated: autofilter lost")
+    entries = formulas_wb[ENTRIES]
+    if entries.freeze_panes != f"A{exp.hdr + 1}":
+        problems.append(f"{ENTRIES}: freeze panes lost")
+    if entries.auto_filter.ref != f"A{exp.hdr}:D{exp.hdr + len(DAYS) * (exp.lastd - exp.first + 1)}":
+        problems.append(f"{ENTRIES}: autofilter lost")
     errors = 0
     for ws in values_wb.worksheets[1:]:
         for row in ws.iter_rows(values_only=True):
